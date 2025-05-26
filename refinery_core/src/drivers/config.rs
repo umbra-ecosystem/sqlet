@@ -7,10 +7,11 @@
 use crate::config::build_db_url;
 use crate::config::{Config, ConfigDbType};
 use crate::error::WrapMigrationError;
+use crate::runner::RollbackTarget;
 use crate::traits::r#async::{AsyncQuery, AsyncTransaction};
 use crate::traits::sync::{Query, Transaction};
 use crate::traits::{GET_APPLIED_MIGRATIONS_QUERY, GET_LAST_APPLIED_MIGRATION_QUERY};
-use crate::{Error, Migration, Report, Target};
+use crate::{Error, MigrateTarget, Migration, Report};
 use async_trait::async_trait;
 use std::convert::Infallible;
 
@@ -200,9 +201,10 @@ impl crate::Migrate for Config {
         &mut self,
         migrations: &[Migration],
         abort_divergent: bool,
-        abort_missing: bool,
+        abort_missing_on_filesystem: bool,
+        abort_missing_on_applied: bool,
         grouped: bool,
-        target: Target,
+        target: MigrateTarget,
         migration_table_name: &str,
     ) -> Result<Report, Error> {
         with_connection!(self, |mut conn| {
@@ -210,7 +212,32 @@ impl crate::Migrate for Config {
                 &mut conn,
                 migrations,
                 abort_divergent,
-                abort_missing,
+                abort_missing_on_filesystem,
+                abort_missing_on_applied,
+                grouped,
+                target,
+                migration_table_name,
+            )
+        })
+    }
+
+    fn rollback(
+        &mut self,
+        migrations: &[Migration],
+        abort_divergent: bool,
+        abort_missing_on_filesystem: bool,
+        abort_missing_on_applied: bool,
+        grouped: bool,
+        target: RollbackTarget,
+        migration_table_name: &str,
+    ) -> Result<Report, Error> {
+        with_connection!(self, |mut conn| {
+            crate::Migrate::rollback(
+                &mut conn,
+                migrations,
+                abort_divergent,
+                abort_missing_on_filesystem,
+                abort_missing_on_applied,
                 grouped,
                 target,
                 migration_table_name,
@@ -263,9 +290,10 @@ impl crate::AsyncMigrate for Config {
         &mut self,
         migrations: &[Migration],
         abort_divergent: bool,
-        abort_missing: bool,
+        abort_missing_on_filesystem: bool,
+        abort_missing_on_applied: bool,
         grouped: bool,
-        target: Target,
+        target: MigrateTarget,
         migration_table_name: &str,
     ) -> Result<Report, Error> {
         with_connection_async!(self, move |mut conn| async move {
@@ -273,7 +301,33 @@ impl crate::AsyncMigrate for Config {
                 &mut conn,
                 migrations,
                 abort_divergent,
-                abort_missing,
+                abort_missing_on_filesystem,
+                abort_missing_on_applied,
+                grouped,
+                target,
+                migration_table_name,
+            )
+            .await
+        })
+    }
+
+    async fn rollback(
+        &mut self,
+        migrations: &[Migration],
+        abort_divergent: bool,
+        abort_missing_on_filesystem: bool,
+        abort_missing_on_applied: bool,
+        grouped: bool,
+        target: RollbackTarget,
+        migration_table_name: &str,
+    ) -> Result<Report, Error> {
+        with_connection_async!(self, move |mut conn| async move {
+            crate::AsyncMigrate::rollback(
+                &mut conn,
+                migrations,
+                abort_divergent,
+                abort_missing_on_filesystem,
+                abort_missing_on_applied,
                 grouped,
                 target,
                 migration_table_name,

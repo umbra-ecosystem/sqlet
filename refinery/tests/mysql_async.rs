@@ -4,10 +4,10 @@ use barrel::backend::MySql as Sql;
 mod mysql_async {
     use futures::FutureExt;
     use refinery::{
+        AsyncMigrate, MigrateTarget, Migration, Runner,
         config::{Config, ConfigDbType},
         embed_migrations,
         error::Kind,
-        AsyncMigrate, Migration, Runner, Target,
     };
     use refinery_core::mysql_async;
     use refinery_core::mysql_async::prelude::Queryable;
@@ -19,30 +19,38 @@ mod mysql_async {
     fn get_migrations() -> Vec<Migration> {
         embed_migrations!("./tests/migrations");
 
-        let migration1 =
-            Migration::unapplied("V1__initial.rs", &migrations::V1__initial::migration()).unwrap();
+        let migration1 = Migration::unapplied(
+            "V1__initial.rs",
+            &migrations::m20250501_000000_initial::up(),
+            &migrations::m20250501_000000_initial::down(),
+        )
+        .unwrap();
 
         let migration2 = Migration::unapplied(
             "V2__add_cars_and_motos_table.sql",
-            include_str!("./migrations/V1-2/V2__add_cars_and_motos_table.sql"),
+            include_str!("./migrations/20250502_000000_add_cars_table/up.sql"),
+            include_str!("./migrations/20250502_000000_add_cars_table/down.sql"),
         )
         .unwrap();
 
         let migration3 = Migration::unapplied(
             "V3__add_brand_to_cars_table",
-            include_str!("./migrations/V3/V3__add_brand_to_cars_table.sql"),
+            &migrations::m20250503_000000_add_brand_to_cars_table::up(),
+            &migrations::m20250503_000000_add_brand_to_cars_table::down(),
         )
         .unwrap();
 
         let migration4 = Migration::unapplied(
             "V4__add_year_to_motos_table.rs",
-            &migrations::V4__add_year_to_motos_table::migration(),
+            &migrations::m20250504_000000_add_year_to_motos_table::up(),
+            &migrations::m20250504_000000_add_year_to_motos_table::down(),
         )
         .unwrap();
 
         let migration5 = Migration::unapplied(
             "V5__add_year_field_to_cars",
             "ALTER TABLE cars ADD year INTEGER;",
+            "ALTER TABLE cars DROP year;",
         )
         .unwrap();
 
@@ -90,7 +98,7 @@ mod mysql_async {
             let mut conn = pool.get_conn().await.unwrap();
 
             embedded::migrations::runner()
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -117,7 +125,7 @@ mod mysql_async {
 
             embedded::migrations::runner()
                 .set_grouped(true)
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -143,7 +151,7 @@ mod mysql_async {
                 mysql_async::Pool::new("mysql://refinery:root@localhost:3306/refinery_test");
 
             let report = embedded::migrations::runner()
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -178,7 +186,7 @@ mod mysql_async {
             let mut conn = pool.get_conn().await.unwrap();
 
             embedded::migrations::runner()
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -207,7 +215,7 @@ mod mysql_async {
 
             embedded::migrations::runner()
                 .set_grouped(true)
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -234,7 +242,7 @@ mod mysql_async {
                 mysql_async::Pool::new("mysql://refinery:root@localhost:3306/refinery_test");
 
             embedded::migrations::runner()
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -261,7 +269,7 @@ mod mysql_async {
 
             embedded::migrations::runner()
                 .set_grouped(true)
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -286,7 +294,7 @@ mod mysql_async {
             let mut pool =
                 mysql_async::Pool::new("mysql://refinery:root@localhost:3306/refinery_test");
 
-            let result = broken::migrations::runner().run_async(&mut pool).await;
+            let result = broken::migrations::runner().migrate_async(&mut pool).await;
 
             let current = pool
                 .get_last_applied_migration(DEFAULT_TABLE_NAME)
@@ -324,7 +332,7 @@ mod mysql_async {
                 mysql_async::Pool::new("mysql://refinery:root@localhost:3306/refinery_test");
 
             embedded::migrations::runner()
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -360,7 +368,7 @@ mod mysql_async {
                 mysql_async::Pool::new("mysql://refinery:root@localhost:3306/refinery_test");
 
             embedded::migrations::runner()
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -371,8 +379,9 @@ mod mysql_async {
                 &migrations,
                 true,
                 true,
+                true,
                 false,
-                Target::Latest,
+                MigrateTarget::Latest,
                 DEFAULT_TABLE_NAME,
             )
             .await
@@ -398,8 +407,8 @@ mod mysql_async {
 
             let report = embedded::migrations::runner()
                 .set_grouped(true)
-                .set_target(Target::Version(3))
-                .run_async(&mut pool)
+                .set_migrate_target(MigrateTarget::Version(3))
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -437,8 +446,8 @@ mod mysql_async {
                 mysql_async::Pool::new("mysql://refinery:root@localhost:3306/refinery_test");
 
             let report = embedded::migrations::runner()
-                .set_target(Target::Version(3))
-                .run_async(&mut pool)
+                .set_migrate_target(MigrateTarget::Version(3))
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -476,13 +485,14 @@ mod mysql_async {
                 mysql_async::Pool::new("mysql://refinery:root@localhost:3306/refinery_test");
 
             embedded::migrations::runner()
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
             let migration = Migration::unapplied(
                 "V4__add_year_field_to_cars",
                 "ALTER TABLE cars ADD year INTEGER;",
+                "ALTER TABLE cars DROP year;",
             )
             .unwrap();
 
@@ -491,8 +501,9 @@ mod mysql_async {
                     &[migration.clone()],
                     true,
                     true,
+                    true,
                     false,
-                    Target::Latest,
+                    MigrateTarget::Latest,
                     DEFAULT_TABLE_NAME,
                 )
                 .await
@@ -516,18 +527,19 @@ mod mysql_async {
                 mysql_async::Pool::new("mysql://refinery:root@localhost:3306/refinery_test");
 
             embedded::migrations::runner()
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
             embedded::migrations::runner()
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
             let migration = Migration::unapplied(
                 "V2__add_year_field_to_cars",
                 "ALTER TABLE cars ADD year INTEGER;",
+                "ALTER TABLE cars DROP year;",
             )
             .unwrap();
 
@@ -536,8 +548,9 @@ mod mysql_async {
                     &[migration.clone()],
                     true,
                     false,
+                    true,
                     false,
-                    Target::Latest,
+                    MigrateTarget::Latest,
                     DEFAULT_TABLE_NAME,
                 )
                 .await
@@ -562,7 +575,7 @@ mod mysql_async {
                 mysql_async::Pool::new("mysql://refinery:root@localhost:3306/refinery_test");
 
             missing::migrations::runner()
-                .run_async(&mut pool)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -575,12 +588,14 @@ mod mysql_async {
                     "city varchar(255)",
                     ");"
                 ),
+                concat!("DROP TABLE persons;"),
             )
             .unwrap();
 
             let migration2 = Migration::unapplied(
                 "V2__add_cars_table",
-                include_str!("./migrations_missing/V2__add_cars_table.sql"),
+                include_str!("./migrations_missing/20250501_000000_create_cars_table/up.sql"),
+                include_str!("./migrations_missing/20250501_000000_create_cars_table/down.sql"),
             )
             .unwrap();
             let err = pool
@@ -588,8 +603,9 @@ mod mysql_async {
                     &[migration1, migration2],
                     true,
                     true,
+                    true,
                     false,
-                    Target::Latest,
+                    MigrateTarget::Latest,
                     DEFAULT_TABLE_NAME,
                 )
                 .await
@@ -620,9 +636,9 @@ mod mysql_async {
             let runner = Runner::new(&migrations)
                 .set_grouped(false)
                 .set_abort_divergent(true)
-                .set_abort_missing(true);
+                .set_abort_missing_on_filesystem(true);
 
-            runner.run_async(&mut config).await.unwrap();
+            runner.migrate_async(&mut config).await.unwrap();
 
             let applied_migrations = runner
                 .get_applied_migrations_async(&mut config)
@@ -665,9 +681,9 @@ mod mysql_async {
             let runner = Runner::new(&migrations)
                 .set_grouped(false)
                 .set_abort_divergent(true)
-                .set_abort_missing(true);
+                .set_abort_missing_on_filesystem(true);
 
-            let report = runner.run_async(&mut config).await.unwrap();
+            let report = runner.migrate_async(&mut config).await.unwrap();
 
             let applied_migrations = report.applied_migrations();
             assert_eq!(5, applied_migrations.len());
@@ -707,9 +723,9 @@ mod mysql_async {
             let runner = Runner::new(&migrations)
                 .set_grouped(false)
                 .set_abort_divergent(true)
-                .set_abort_missing(true);
+                .set_abort_missing_on_filesystem(true);
 
-            runner.run_async(&mut config).await.unwrap();
+            runner.migrate_async(&mut config).await.unwrap();
 
             let applied_migration = runner
                 .get_last_applied_migration_async(&mut config)
@@ -733,8 +749,8 @@ mod mysql_async {
             let mut conn = pool.get_conn().await.unwrap();
 
             let report = embedded::migrations::runner()
-                .set_target(Target::Fake)
-                .run_async(&mut pool)
+                .set_migrate_target(MigrateTarget::Fake)
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 
@@ -772,8 +788,8 @@ mod mysql_async {
             let mut conn = pool.get_conn().await.unwrap();
 
             let report = embedded::migrations::runner()
-                .set_target(Target::FakeVersion(2))
-                .run_async(&mut pool)
+                .set_migrate_target(MigrateTarget::FakeVersion(2))
+                .migrate_async(&mut pool)
                 .await
                 .unwrap();
 

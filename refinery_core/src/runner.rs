@@ -6,46 +6,27 @@ use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::num::NonZeroU32;
 
 use crate::traits::{sync::migrate as sync_migrate, DEFAULT_MIGRATION_TABLE_NAME};
 use crate::util::parse_migration_name;
 use crate::{AsyncMigrate, Error, Migrate};
-use std::fmt::Formatter;
-
-/// An enum set that represents the type of the Migration
-#[derive(Clone, PartialEq)]
-pub enum Type {
-    Versioned,
-    Unversioned,
-}
-
-impl fmt::Display for Type {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let version_type = match self {
-            Type::Versioned => "V",
-            Type::Unversioned => "U",
-        };
-        write!(f, "{}", version_type)
-    }
-}
-
-impl fmt::Debug for Type {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let version_type = match self {
-            Type::Versioned => "Versioned",
-            Type::Unversioned => "Unversioned",
-        };
-        write!(f, "{}", version_type)
-    }
-}
 
 /// An enum set that represents the target version up to which refinery should migrate, it is used by [Runner]
 #[derive(Clone, Copy, Debug)]
-pub enum Target {
+pub enum MigrateTarget {
     Latest,
-    Version(u32),
+    Version(i64),
     Fake,
-    FakeVersion(u32),
+    FakeVersion(i64),
+}
+
+/// An enum set that represents the target for a rollback operation, it is used by [Runner]
+#[derive(Clone, Copy, Debug)]
+pub enum RollbackTarget {
+    Count(NonZeroU32),
+    Version(i64),
+    All,
 }
 
 // an Enum set that represents the state of the migration: Applied on the database,
@@ -66,17 +47,17 @@ pub struct Migration {
     state: State,
     name: String,
     checksum: u64,
-    version: i32,
-    prefix: Type,
+    version: i64,
     sql: Option<String>,
+    down_sql: Option<String>,
     applied_on: Option<OffsetDateTime>,
 }
 
 impl Migration {
     /// Create an unapplied migration, name and version are parsed from the input_name,
-    /// which must be named in the format (U|V){1}__{2}.rs where {1} represents the migration version and {2} the name.
-    pub fn unapplied(input_name: &str, sql: &str) -> Result<Migration, Error> {
-        let (prefix, version, name) = parse_migration_name(input_name)?;
+    /// which must be named in the format {timestamp}_{name}.rs where {timestamp} represents the migration version.
+    pub fn unapplied(input_name: &str, sql: &str, down_sql: &str) -> Result<Migration, Error> {
+        let (version, name) = parse_migration_name(input_name)?;
 
         // Previously, `std::collections::hash_map::DefaultHasher` was used
         // to calculate the checksum and the implementation at that time
@@ -90,14 +71,15 @@ impl Migration {
         name.hash(&mut hasher);
         version.hash(&mut hasher);
         sql.hash(&mut hasher);
+        down_sql.hash(&mut hasher);
         let checksum = hasher.finish();
 
         Ok(Migration {
             state: State::Unapplied,
             name,
             version,
-            prefix,
             sql: Some(sql.into()),
+            down_sql: Some(down_sql.into()),
             applied_on: None,
             checksum,
         })
@@ -105,7 +87,7 @@ impl Migration {
 
     // Create a migration from an applied migration on the database
     pub fn applied(
-        version: i32,
+        version: i64,
         name: String,
         applied_on: OffsetDateTime,
         checksum: u64,
@@ -115,9 +97,8 @@ impl Migration {
             name,
             checksum,
             version,
-            // applied migrations are always versioned
-            prefix: Type::Versioned,
             sql: None,
+            down_sql: None,
             applied_on: Some(applied_on),
         }
     }
@@ -128,19 +109,31 @@ impl Migration {
         self.state = State::Applied;
     }
 
+    // convert the Applied into an Unapplied Migration
+    pub fn set_rolled_back(&mut self) {
+        self.applied_on = None;
+        self.state = State::Unapplied;
+    }
+
+    // Set the SQL content of the migration, this is used during rollback operations
+    pub(crate) fn set_sql(&mut self, sql: String, down_sql: String) {
+        self.sql = Some(sql);
+        self.down_sql = Some(down_sql);
+    }
+
     // Get migration sql content
     pub fn sql(&self) -> Option<&str> {
         self.sql.as_deref()
     }
 
-    /// Get the Migration version
-    pub fn version(&self) -> u32 {
-        self.version as u32
+    // Get migration down sql content
+    pub fn down_sql(&self) -> Option<&str> {
+        self.down_sql.as_deref()
     }
 
-    /// Get the Prefix
-    pub fn prefix(&self) -> &Type {
-        &self.prefix
+    /// Get the Migration version
+    pub fn version(&self) -> i64 {
+        self.version as i64
     }
 
     /// Get the Migration Name
@@ -162,7 +155,7 @@ impl Migration {
 
 impl fmt::Display for Migration {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "{}{}__{}", self.prefix, self.version, self.name)
+        write!(fmt, "{}_{}", self.version, self.name)
     }
 }
 
@@ -200,17 +193,34 @@ impl PartialOrd for Migration {
 #[derive(Clone, Debug)]
 pub struct Report {
     applied_migrations: Vec<Migration>,
+    rolled_back_migrations: Vec<Migration>,
 }
 
 impl Report {
     /// Instantiate a new Report
-    pub fn new(applied_migrations: Vec<Migration>) -> Report {
-        Report { applied_migrations }
+    pub fn applied(applied_migrations: Vec<Migration>) -> Report {
+        Report {
+            applied_migrations,
+            rolled_back_migrations: Vec::new(),
+        }
+    }
+
+    /// Instantiate a new Report with rolled back migrations
+    pub fn rolled_back(rolled_back_migrations: Vec<Migration>) -> Report {
+        Report {
+            applied_migrations: Vec::new(),
+            rolled_back_migrations,
+        }
     }
 
     /// Retrieves the list of applied `Migration` of the migration cycle
     pub fn applied_migrations(&self) -> &Vec<Migration> {
         &self.applied_migrations
+    }
+
+    /// Retrieves the list of rolled back `Migration` of the migration cycle
+    pub fn rolled_back_migrations(&self) -> &Vec<Migration> {
+        &self.rolled_back_migrations
     }
 }
 
@@ -222,9 +232,11 @@ impl Report {
 pub struct Runner {
     grouped: bool,
     abort_divergent: bool,
-    abort_missing: bool,
+    abort_missing_on_filesystem: bool,
+    abort_missing_on_applied: bool,
     migrations: Vec<Migration>,
-    target: Target,
+    migrate_target: MigrateTarget,
+    rollback_target: RollbackTarget,
     migration_table_name: String,
 }
 
@@ -233,9 +245,11 @@ impl Runner {
     pub fn new(migrations: &[Migration]) -> Runner {
         Runner {
             grouped: false,
-            target: Target::Latest,
+            migrate_target: MigrateTarget::Latest,
+            rollback_target: RollbackTarget::All,
             abort_divergent: true,
-            abort_missing: true,
+            abort_missing_on_filesystem: true,
+            abort_missing_on_applied: false,
             migrations: migrations.to_vec(),
             migration_table_name: DEFAULT_MIGRATION_TABLE_NAME.into(),
         }
@@ -250,8 +264,20 @@ impl Runner {
     /// Version migrates to a user provided version, a Version with a higher version than the latest will be ignored,
     /// and Fake doesn't actually run any migration, just creates and updates refinery's schema migration table
     /// by default this is set to Latest
-    pub fn set_target(self, target: Target) -> Runner {
-        Runner { target, ..self }
+    pub fn set_migrate_target(self, target: MigrateTarget) -> Runner {
+        Runner {
+            migrate_target: target,
+            ..self
+        }
+    }
+
+    /// Set the target for a rollback operation, it can be Count, Version or All.
+    /// Count rolls back the last N migrations, Version rolls back to a specific version,
+    pub fn set_rollback_target(self, target: RollbackTarget) -> Runner {
+        Runner {
+            rollback_target: target,
+            ..self
+        }
     }
 
     /// Set true if all migrations should be grouped and run in a single transaction.
@@ -275,13 +301,25 @@ impl Runner {
         }
     }
 
-    /// Set true if migration process should abort if missing migrations are found
-    /// i.e. applied migrations that are not found on the filesystem,
-    /// or migrations found on filesystem with a version inferior to the last one applied but not applied.
-    /// by default this is set to true
-    pub fn set_abort_missing(self, abort_missing: bool) -> Runner {
+    /// Set true if migration process should abort if missing migrations are found on the filesystem,
+    /// by default this is set to `true`
+    ///
+    /// This is useful to ensure that all migrations that are applied on the database
+    /// are also present on the filesystem.
+    pub fn set_abort_missing_on_filesystem(self, abort_missing: bool) -> Runner {
         Runner {
-            abort_missing,
+            abort_missing_on_filesystem: abort_missing,
+            ..self
+        }
+    }
+
+    /// Set true if migration process should abort if missing migrations are found on the applied migrations,
+    /// by default this is set to `false`.
+    ///
+    /// This is useful to prevent applying migrations that are earlier than the last applied migration.
+    pub fn set_abort_missing_on_applied(self, abort_missing: bool) -> Runner {
+        Runner {
+            abort_missing_on_applied: abort_missing,
             ..self
         }
     }
@@ -348,18 +386,18 @@ impl Runner {
     /// Creates an iterator over pending migrations, applying each before returning
     /// the result from `next()`. If a migration fails, the iterator will return that
     /// result and further calls to `next()` will return `None`.
-    pub fn run_iter<C>(
+    pub fn migrate_iter<C>(
         self,
         connection: &mut C,
     ) -> impl Iterator<Item = Result<Migration, Error>> + '_
     where
         C: Migrate,
     {
-        RunIterator::new(self, connection)
+        MigrateIterator::new(self, connection)
     }
 
     /// Runs the Migrations in the supplied database connection
-    pub fn run<C>(&self, connection: &mut C) -> Result<Report, Error>
+    pub fn migrate<C>(&self, connection: &mut C) -> Result<Report, Error>
     where
         C: Migrate,
     {
@@ -367,15 +405,16 @@ impl Runner {
             connection,
             &self.migrations,
             self.abort_divergent,
-            self.abort_missing,
+            self.abort_missing_on_filesystem,
+            self.abort_missing_on_applied,
             self.grouped,
-            self.target,
+            self.migrate_target,
             &self.migration_table_name,
         )
     }
 
     /// Runs the Migrations asynchronously in the supplied database connection
-    pub async fn run_async<C>(&self, connection: &mut C) -> Result<Report, Error>
+    pub async fn migrate_async<C>(&self, connection: &mut C) -> Result<Report, Error>
     where
         C: AsyncMigrate + Send,
     {
@@ -383,46 +422,82 @@ impl Runner {
             connection,
             &self.migrations,
             self.abort_divergent,
-            self.abort_missing,
+            self.abort_missing_on_filesystem,
+            self.abort_missing_on_applied,
             self.grouped,
-            self.target,
+            self.migrate_target,
+            &self.migration_table_name,
+        )
+        .await
+    }
+
+    /// Rolls back the migrations in the supplied database connection
+    pub fn rollback<C>(&self, connection: &mut C) -> Result<Report, Error>
+    where
+        C: Migrate,
+    {
+        Migrate::rollback(
+            connection,
+            &self.migrations,
+            self.abort_divergent,
+            self.abort_missing_on_filesystem,
+            self.grouped,
+            self.abort_missing_on_applied,
+            self.rollback_target,
+            &self.migration_table_name,
+        )
+    }
+
+    pub async fn rollback_async<C>(&self, connection: &mut C) -> Result<Report, Error>
+    where
+        C: AsyncMigrate + Send,
+    {
+        AsyncMigrate::rollback(
+            connection,
+            &self.migrations,
+            self.abort_divergent,
+            self.abort_missing_on_filesystem,
+            self.grouped,
+            self.abort_missing_on_applied,
+            self.rollback_target,
             &self.migration_table_name,
         )
         .await
     }
 }
 
-pub struct RunIterator<'a, C> {
+pub struct MigrateIterator<'a, C> {
     connection: &'a mut C,
-    target: Target,
+    target: MigrateTarget,
     migration_table_name: String,
     items: VecDeque<Migration>,
     failed: bool,
 }
-impl<'a, C> RunIterator<'a, C>
+impl<'a, C> MigrateIterator<'a, C>
 where
     C: Migrate,
 {
-    pub(crate) fn new(runner: Runner, connection: &'a mut C) -> RunIterator<'a, C> {
-        RunIterator {
+    pub(crate) fn new(runner: Runner, connection: &'a mut C) -> MigrateIterator<'a, C> {
+        MigrateIterator {
             items: VecDeque::from(
                 Migrate::get_unapplied_migrations(
                     connection,
                     &runner.migrations,
                     runner.abort_divergent,
-                    runner.abort_missing,
+                    runner.abort_missing_on_filesystem,
+                    runner.abort_missing_on_applied,
                     &runner.migration_table_name,
                 )
                 .unwrap(),
             ),
             connection,
-            target: runner.target,
+            target: runner.migrate_target,
             migration_table_name: runner.migration_table_name.clone(),
             failed: false,
         }
     }
 }
-impl<C> Iterator for RunIterator<'_, C>
+impl<C> Iterator for MigrateIterator<'_, C>
 where
     C: Migrate,
 {

@@ -6,7 +6,8 @@ mod tiberius {
     use futures::FutureExt;
     use predicates::str::contains;
     use refinery::{
-        config::Config, embed_migrations, error::Kind, AsyncMigrate, Migration, Runner, Target,
+        AsyncMigrate, MigrateTarget, Migration, Runner, config::Config, embed_migrations,
+        error::Kind,
     };
     use refinery_core::tiberius::{self, Config as TConfig};
     use std::convert::TryInto;
@@ -22,30 +23,38 @@ mod tiberius {
     fn get_migrations() -> Vec<Migration> {
         embed_migrations!("./tests/migrations");
 
-        let migration1 =
-            Migration::unapplied("V1__initial.rs", &migrations::V1__initial::migration()).unwrap();
+        let migration1 = Migration::unapplied(
+            "V1__initial.rs",
+            &migrations::m20250501_000000_initial::up(),
+            &migrations::m20250501_000000_initial::down(),
+        )
+        .unwrap();
 
         let migration2 = Migration::unapplied(
             "V2__add_cars_and_motos_table.sql",
-            include_str!("./migrations/V1-2/V2__add_cars_and_motos_table.sql"),
+            include_str!("./migrations/20250502_000000_add_cars_table/up.sql"),
+            include_str!("./migrations/20250502_000000_add_cars_table/down.sql"),
         )
         .unwrap();
 
         let migration3 = Migration::unapplied(
             "V3__add_brand_to_cars_table",
-            include_str!("./migrations/V3/V3__add_brand_to_cars_table.sql"),
+            &migrations::m20250503_000000_add_brand_to_cars_table::up(),
+            &migrations::m20250503_000000_add_brand_to_cars_table::down(),
         )
         .unwrap();
 
         let migration4 = Migration::unapplied(
             "V4__add_year_to_motos_table.rs",
-            &migrations::V4__add_year_to_motos_table::migration(),
+            &migrations::m20250504_000000_add_year_to_motos_table::up(),
+            &migrations::m20250504_000000_add_year_to_motos_table::down(),
         )
         .unwrap();
 
         let migration5 = Migration::unapplied(
             "V5__add_year_field_to_cars",
             "ALTER TABLE cars ADD year INTEGER;",
+            "ALTER TABLE cars DROP year;",
         )
         .unwrap();
 
@@ -121,13 +130,14 @@ mod tiberius {
                 .unwrap();
 
             embedded::migrations::runner()
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
             let migration = Migration::unapplied(
                 "V4__add_year_field_to_cars",
                 "ALTER TABLE cars ADD year INTEGER;",
+                "ALTER TABLE cars DROP year;",
             )
             .unwrap();
             let err = client
@@ -135,8 +145,9 @@ mod tiberius {
                     &[migration],
                     true,
                     true,
+                    true,
                     false,
-                    Target::Latest,
+                    MigrateTarget::Latest,
                     DEFAULT_TABLE_NAME,
                 )
                 .await
@@ -172,13 +183,14 @@ mod tiberius {
                 .unwrap();
 
             embedded::migrations::runner()
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
             let migration = Migration::unapplied(
                 "V2__add_year_field_to_cars",
                 "ALTER TABLE cars ADD year INTEGER;",
+                "ALTER TABLE cars DROP year;",
             )
             .unwrap();
             let err = client
@@ -186,8 +198,9 @@ mod tiberius {
                     &[migration.clone()],
                     true,
                     false,
+                    true,
                     false,
-                    Target::Latest,
+                    MigrateTarget::Latest,
                     DEFAULT_TABLE_NAME,
                 )
                 .await
@@ -224,7 +237,7 @@ mod tiberius {
                 .unwrap();
 
             missing::migrations::runner()
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -237,12 +250,14 @@ mod tiberius {
                     "city varchar(255)",
                     ");"
                 ),
+                "DROP TABLE persons;",
             )
             .unwrap();
 
             let migration2 = Migration::unapplied(
                 "V2__add_cars_table",
-                include_str!("./migrations_missing/V2__add_cars_table.sql"),
+                include_str!("./migrations_missing/20250501_000000_create_cars_table/up.sql"),
+                include_str!("./migrations_missing/20250501_000000_create_cars_table/down.sql"),
             )
             .unwrap();
             let err = client
@@ -250,8 +265,9 @@ mod tiberius {
                     &[migration1, migration2],
                     true,
                     true,
+                    true,
                     false,
-                    Target::Latest,
+                    MigrateTarget::Latest,
                     DEFAULT_TABLE_NAME,
                 )
                 .await
@@ -286,7 +302,7 @@ mod tiberius {
                 .unwrap();
 
             embedded::migrations::runner()
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -328,7 +344,7 @@ mod tiberius {
 
             embedded::migrations::runner()
                 .set_grouped(true)
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -369,7 +385,7 @@ mod tiberius {
                 .unwrap();
 
             let report = embedded::migrations::runner()
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -415,7 +431,7 @@ mod tiberius {
                 .unwrap();
 
             embedded::migrations::runner()
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -462,7 +478,7 @@ mod tiberius {
 
             embedded::migrations::runner()
                 .set_grouped(true)
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -508,7 +524,7 @@ mod tiberius {
                 .unwrap();
 
             embedded::migrations::runner()
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -520,8 +536,9 @@ mod tiberius {
                     &migrations,
                     true,
                     true,
+                    true,
                     false,
-                    Target::Latest,
+                    MigrateTarget::Latest,
                     DEFAULT_TABLE_NAME,
                 )
                 .await
@@ -557,7 +574,7 @@ mod tiberius {
                 .unwrap();
 
             embedded::migrations::runner()
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -595,7 +612,7 @@ mod tiberius {
 
             embedded::migrations::runner()
                 .set_grouped(true)
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -631,7 +648,9 @@ mod tiberius {
                 .await
                 .unwrap();
 
-            let result = broken::migrations::runner().run_async(&mut client).await;
+            let result = broken::migrations::runner()
+                .migrate_async(&mut client)
+                .await;
 
             let current = client
                 .get_last_applied_migration(DEFAULT_TABLE_NAME)
@@ -682,7 +701,7 @@ mod tiberius {
 
             let result = broken::migrations::runner()
                 .set_grouped(true)
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await;
 
             let current = client
@@ -727,7 +746,7 @@ mod tiberius {
                 .unwrap();
 
             embedded::migrations::runner()
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -765,9 +784,9 @@ mod tiberius {
             let runner = Runner::new(&migrations)
                 .set_grouped(false)
                 .set_abort_divergent(true)
-                .set_abort_missing(true);
+                .set_abort_missing_on_filesystem(true);
 
-            runner.run_async(&mut config).await.unwrap();
+            runner.migrate_async(&mut config).await.unwrap();
 
             let applied_migrations = runner
                 .get_applied_migrations_async(&mut config)
@@ -805,9 +824,9 @@ mod tiberius {
             let runner = Runner::new(&migrations)
                 .set_grouped(false)
                 .set_abort_divergent(true)
-                .set_abort_missing(true);
+                .set_abort_missing_on_filesystem(true);
 
-            let report = runner.run_async(&mut config).await.unwrap();
+            let report = runner.migrate_async(&mut config).await.unwrap();
 
             let applied_migrations = report.applied_migrations();
             assert_eq!(5, applied_migrations.len());
@@ -842,9 +861,9 @@ mod tiberius {
             let runner = Runner::new(&migrations)
                 .set_grouped(false)
                 .set_abort_divergent(true)
-                .set_abort_missing(true);
+                .set_abort_missing_on_filesystem(true);
 
-            runner.run_async(&mut config).await.unwrap();
+            runner.migrate_async(&mut config).await.unwrap();
 
             let applied_migration = runner
                 .get_last_applied_migration_async(&mut config)
@@ -879,8 +898,8 @@ mod tiberius {
                 .unwrap();
 
             let report = embedded::migrations::runner()
-                .set_target(Target::Version(3))
-                .run_async(&mut client)
+                .set_migrate_target(MigrateTarget::Version(3))
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -930,9 +949,9 @@ mod tiberius {
                 .unwrap();
 
             let report = embedded::migrations::runner()
-                .set_target(Target::Version(3))
+                .set_migrate_target(MigrateTarget::Version(3))
                 .set_grouped(true)
-                .run_async(&mut client)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -982,8 +1001,8 @@ mod tiberius {
                 .unwrap();
 
             let report = embedded::migrations::runner()
-                .set_target(Target::Fake)
-                .run_async(&mut client)
+                .set_migrate_target(MigrateTarget::Fake)
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 
@@ -1036,8 +1055,8 @@ mod tiberius {
                 .unwrap();
 
             let report = embedded::migrations::runner()
-                .set_target(Target::FakeVersion(2))
-                .run_async(&mut client)
+                .set_migrate_target(MigrateTarget::FakeVersion(2))
+                .migrate_async(&mut client)
                 .await
                 .unwrap();
 

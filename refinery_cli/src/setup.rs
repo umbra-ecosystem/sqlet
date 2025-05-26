@@ -14,7 +14,7 @@
 //! is already present, the fields from it can be used to
 //! override otherwise default values
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use refinery_core::config::{Config, ConfigDbType};
 use std::fs::File;
 use std::io::{self, Write};
