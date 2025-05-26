@@ -5,10 +5,10 @@ mod rusqlite {
     use assert_cmd::prelude::*;
     use predicates::str::contains;
     use refinery::{
+        Migrate, MigrateTarget, Migration, Runner,
         config::{Config, ConfigDbType},
         embed_migrations,
         error::Kind,
-        Migrate, MigrateTarget, Migration, Runner,
     };
     use refinery_core::rusqlite::Error;
     use refinery_core::rusqlite::{Connection, OptionalExtension};

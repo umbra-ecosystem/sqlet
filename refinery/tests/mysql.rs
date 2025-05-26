@@ -7,9 +7,9 @@ mod mysql {
     use predicates::str::contains;
     use refinery::embed_migrations;
     use refinery::{
+        Migrate, MigrateTarget, Migration, Runner,
         config::{Config, ConfigDbType},
         error::Kind,
-        Migrate, MigrateTarget, Migration, Runner,
     };
     use refinery_core::mysql;
     use std::process::Command;

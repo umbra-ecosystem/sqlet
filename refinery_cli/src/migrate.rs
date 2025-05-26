@@ -2,8 +2,8 @@ use std::path::Path;
 
 use anyhow::Context;
 use refinery_core::{
-    config::ConfigDbType, find_migration_files, parse_sql_migration_files, MigrateTarget,
-    MigrationType, Runner,
+    MigrateTarget, MigrationType, Runner, config::ConfigDbType, find_migration_files,
+    parse_sql_migration_files,
 };
 
 use crate::{cli::MigrateArgs, config};

@@ -4,10 +4,10 @@ use barrel::backend::MySql as Sql;
 mod mysql_async {
     use futures::FutureExt;
     use refinery::{
+        AsyncMigrate, MigrateTarget, Migration, Runner,
         config::{Config, ConfigDbType},
         embed_migrations,
         error::Kind,
-        AsyncMigrate, MigrateTarget, Migration, Runner,
     };
     use refinery_core::mysql_async;
     use refinery_core::mysql_async::prelude::Queryable;

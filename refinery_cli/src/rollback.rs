@@ -1,9 +1,9 @@
 use std::{num::NonZero, path::Path};
 
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use refinery_core::{
-    config::ConfigDbType, find_migration_files, parse_sql_migration_files, MigrationType,
-    RollbackTarget, Runner,
+    MigrationType, RollbackTarget, Runner, config::ConfigDbType, find_migration_files,
+    parse_sql_migration_files,
 };
 
 use crate::{cli::RollbackArgs, config};

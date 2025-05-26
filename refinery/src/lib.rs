@@ -32,9 +32,9 @@ for more examples refer to the [examples](https://github.com/rust-db/refinery/tr
 */
 
 pub use refinery_core::config;
-pub use refinery_core::{
-    error, load_sql_migrations, Error, MigrateTarget, Migration, Report, RollbackTarget, Runner,
-};
 #[doc(hidden)]
 pub use refinery_core::{AsyncMigrate, Migrate};
+pub use refinery_core::{
+    Error, MigrateTarget, Migration, Report, RollbackTarget, Runner, error, load_sql_migrations,
+};
 pub use refinery_macros::embed_migrations;

@@ -4,10 +4,10 @@ use barrel::backend::Pg as Sql;
 mod tokio_postgres {
     use futures::FutureExt;
     use refinery::{
+        AsyncMigrate, MigrateTarget, Migration, Runner,
         config::{Config, ConfigDbType},
         embed_migrations,
         error::Kind,
-        AsyncMigrate, MigrateTarget, Migration, Runner,
     };
     use refinery_core::tokio_postgres;
     use refinery_core::tokio_postgres::NoTls;

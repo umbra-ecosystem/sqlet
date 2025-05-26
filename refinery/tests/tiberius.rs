@@ -6,8 +6,8 @@ mod tiberius {
     use futures::FutureExt;
     use predicates::str::contains;
     use refinery::{
-        config::Config, embed_migrations, error::Kind, AsyncMigrate, MigrateTarget, Migration,
-        Runner,
+        AsyncMigrate, MigrateTarget, Migration, Runner, config::Config, embed_migrations,
+        error::Kind,
     };
     use refinery_core::tiberius::{self, Config as TConfig};
     use std::convert::TryInto;

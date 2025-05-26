@@ -1,8 +1,8 @@
+use anyhow::{Context, Error};
+use chrono::Utc;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use anyhow::{Context, Error};
-use chrono::Utc;
 
 use crate::cli::GenerateArgs;
 
@@ -10,19 +10,26 @@ pub fn handle_generate_command(args: GenerateArgs) -> anyhow::Result<()> {
     let migration_name = sanitize_name(&args.name);
     let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
     let migration_dir_name = format!("{}_{}", timestamp, migration_name);
-    
+
     create_migration(&args.path, &migration_dir_name)
 }
 
 fn sanitize_name(name: &str) -> String {
-    let lowercase = name.chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' { c } else { '_' })
+    let lowercase = name
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect::<String>()
         .to_lowercase();
-    
+
     let mut result = String::with_capacity(lowercase.len());
     let mut last_was_underscore = false;
-    
+
     for c in lowercase.chars() {
         if c == '_' {
             if !last_was_underscore {
@@ -34,14 +41,19 @@ fn sanitize_name(name: &str) -> String {
             last_was_underscore = false;
         }
     }
-    
-    result.trim_start_matches('_').trim_end_matches('_').to_string()
+
+    result
+        .trim_start_matches('_')
+        .trim_end_matches('_')
+        .to_string()
 }
 
 fn create_migration(base_path: &Path, migration_name: &str) -> anyhow::Result<()> {
     if !base_path.exists() {
-        fs::create_dir_all(base_path)
-            .context(format!("Failed to create migrations directory at {:?}", base_path))?;
+        fs::create_dir_all(base_path).context(format!(
+            "Failed to create migrations directory at {:?}",
+            base_path
+        ))?;
     }
 
     let migration_path = base_path.join(migration_name);
@@ -75,12 +87,12 @@ fn create_migration(base_path: &Path, migration_name: &str) -> anyhow::Result<()
 }
 
 fn create_migration_file(path: &PathBuf, content: &str) -> anyhow::Result<()> {
-    let mut file = fs::File::create(path)
-        .context(format!("Failed to create migration file at {:?}", path))?;
-    
+    let mut file =
+        fs::File::create(path).context(format!("Failed to create migration file at {:?}", path))?;
+
     file.write_all(content.as_bytes())
         .context(format!("Failed to write to migration file at {:?}", path))?;
-    
+
     Ok(())
 }
 
@@ -99,6 +111,9 @@ mod tests {
         assert_eq!(sanitize_name("create_users_table_"), "create_users_table");
         assert_eq!(sanitize_name("_create_users_table_"), "create_users_table");
         assert_eq!(sanitize_name("create__users___table"), "create_users_table");
-        assert_eq!(sanitize_name("__Create-Users__Table!@#$%^&*()__"), "create_users_table");
+        assert_eq!(
+            sanitize_name("__Create-Users__Table!@#$%^&*()__"),
+            "create_users_table"
+        );
     }
 }
