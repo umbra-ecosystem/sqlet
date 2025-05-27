@@ -255,12 +255,8 @@ mod tests {
 
         let migration2 = Migration::unapplied(
             "20250502_000000_add_cars_and_motos_table.sql",
-            include_str!(
-                "../../../sqlet/tests/migrations/20250502_000000_add_cars_table/up.sql"
-            ),
-            include_str!(
-                "../../../sqlet/tests/migrations/20250502_000000_add_cars_table/up.sql"
-            ),
+            include_str!("../../../sqlet/tests/migrations/20250502_000000_add_cars_table/up.sql"),
+            include_str!("../../../sqlet/tests/migrations/20250502_000000_add_cars_table/up.sql"),
         )
         .unwrap();
 
