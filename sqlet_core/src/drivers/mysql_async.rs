@@ -1,11 +1,11 @@
-use crate::traits::r#async::{AsyncMigrate, AsyncQuery, AsyncTransaction};
 use crate::Migration;
+use crate::traits::r#async::{AsyncMigrate, AsyncQuery, AsyncTransaction};
 use async_trait::async_trait;
 use mysql_async::{
-    prelude::Queryable, Error as MError, IsolationLevel, Pool, Transaction as MTransaction, TxOpts,
+    Error as MError, IsolationLevel, Pool, Transaction as MTransaction, TxOpts, prelude::Queryable,
 };
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
 async fn query_applied_migrations<'a>(
     mut transaction: MTransaction<'a>,

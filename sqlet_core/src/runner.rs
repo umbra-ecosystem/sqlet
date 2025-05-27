@@ -8,7 +8,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroU32;
 
-use crate::traits::{sync::migrate as sync_migrate, DEFAULT_MIGRATION_TABLE_NAME};
+use crate::traits::{DEFAULT_MIGRATION_TABLE_NAME, sync::migrate as sync_migrate};
 use crate::util::parse_migration_name;
 use crate::{AsyncMigrate, Error, Migrate};
 

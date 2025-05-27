@@ -1,5 +1,5 @@
-use crate::error::{Error, Kind};
 use crate::Migration;
+use crate::error::{Error, Kind};
 use regex::Regex;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -325,7 +325,7 @@ pub fn find_directory_migration_files(
 mod tests {
     use crate::util::MigrationPath;
 
-    use super::{find_migration_files, load_sql_migrations, MigrationType};
+    use super::{MigrationType, find_migration_files, load_sql_migrations};
     use std::fs;
     use tempfile::TempDir;
 

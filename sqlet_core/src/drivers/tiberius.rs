@@ -1,14 +1,14 @@
-use crate::traits::r#async::{AsyncMigrate, AsyncQuery, AsyncTransaction};
 use crate::Migration;
+use crate::traits::r#async::{AsyncMigrate, AsyncQuery, AsyncTransaction};
 
 use async_trait::async_trait;
 use futures::{
-    io::{AsyncRead, AsyncWrite},
     TryStreamExt,
+    io::{AsyncRead, AsyncWrite},
 };
-use tiberius::{error::Error, Client, QueryItem};
-use time::format_description::well_known::Rfc3339;
+use tiberius::{Client, QueryItem, error::Error};
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
 async fn query_applied_migrations<S: AsyncRead + AsyncWrite + Unpin + Send>(
     client: &mut Client<S>,

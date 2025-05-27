@@ -1,11 +1,11 @@
-use crate::traits::sync::{Migrate, Query, Transaction};
 use crate::Migration;
+use crate::traits::sync::{Migrate, Query, Transaction};
 use mysql::{
-    error::Error as MError, prelude::Queryable, Conn, IsolationLevel, PooledConn,
-    Transaction as MTransaction, TxOpts,
+    Conn, IsolationLevel, PooledConn, Transaction as MTransaction, TxOpts, error::Error as MError,
+    prelude::Queryable,
 };
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
 fn get_tx_opts() -> TxOpts {
     TxOpts::default()
