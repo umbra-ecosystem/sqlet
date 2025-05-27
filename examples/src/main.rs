@@ -1,8 +1,8 @@
 use log::info;
-use refinery::Migration;
 use rusqlite::Connection;
+use sqlet::Migration;
 
-refinery::embed_migrations!("migrations");
+sqlet::embed_migrations!("migrations");
 
 fn main() {
     env_logger::init();

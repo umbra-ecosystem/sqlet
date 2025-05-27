@@ -18,38 +18,38 @@ jobs:
       with:
         toolchain: stable
 
-    - name: Publish refinery-core
+    - name: Publish sqlet-core
       uses: actions-rs/cargo@v1
       env:
         CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
       with:
         command: publish
-        args: --all-features refinery-core
+        args: --all-features sqlet-core
         args: --token $CARGO_TOKEN
 
-    - name: Publish refinery-macros
+    - name: Publish sqlet-macros
       uses: actions-rs/cargo@v1
       env:
         CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
       with:
         command: publish
-        args: --all-features refinery-macros
+        args: --all-features sqlet-macros
         args: --token $CARGO_TOKEN
 
-    - name: Publish refinery
+    - name: Publish sqlet
       uses: actions-rs/cargo@v1
       env:
         CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
       with:
         command: publish
-        args: --all-features refinery
+        args: --all-features sqlet
         args: --token $CARGO_TOKEN
 
-    - name: Publish refinery-cli
+    - name: Publish sqlet-cli
       uses: actions-rs/cargo@v1
       env:
         CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
       with:
         command: publish
-        args: --all-features refinery-cli
+        args: --all-features sqlet-cli
         args: --token $CARGO_TOKEN

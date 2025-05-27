@@ -13,8 +13,7 @@
 # Reference:
 # https://github.com/BurntSushi/ripgrep/blob/master/.github/workflows/release.yml
 
-
-name: Create and publish refinery releases
+name: Create and publish sqlet releases
 
 on:
   push:
@@ -27,29 +26,29 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.release.outputs.upload_url }}
-      refinery_version: ${{ env.REFINERY_VERSION }}
+      sqlet_version: ${{ env.SQLET_VERSION }}
     steps:
       - name: Get the release version from the tag
         shell: bash
-        if: env.REFINERY_VERSION == ''
+        if: env.SQLET_VERSION == ''
         run: |
           # Apparently, this is the right way to get a tag name. Really?
           #
           # See: https://github.community/t5/GitHub-Actions/How-to-get-just-the-tag-name/m-p/32167/highlight/true#M1027
-          echo "REFINERY_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          echo "version is: ${{ env.REFINERY_VERSION }}"
+          echo "SQLET_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          echo "version is: ${{ env.SQLET_VERSION }}"
       - name: Create GitHub release
         id: release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.REFINERY_VERSION }}
-          release_name: ${{ env.REFINERY_VERSION }}
+          tag_name: ${{ env.SQLET_VERSION }}
+          release_name: ${{ env.SQLET_VERSION }}
 
   build-release:
     name: build-release
-    needs: ['create-release']
+    needs: ["create-release"]
     runs-on: ${{ matrix.os }}
     env:
       # Emit backtraces on panics.
@@ -60,89 +59,89 @@ jobs:
       matrix:
         build: [linux, linux-deb, macos, win-msvc, win-gnu, win32-msvc]
         include:
-        - build: linux
-          os: ubuntu-latest
-          rust: nightly
-          target: x86_64-unknown-linux-musl
-        - build: linux-deb
-          os: ubuntu-18.04
-          rust: nightly
-          target: x86_64-unknown-linux-gnu
-        - build: macos
-          os: macos-latest
-          rust: nightly
-          target: x86_64-apple-darwin
-        - build: win-msvc
-          os: windows-2019
-          rust: nightly
-          target: x86_64-pc-windows-msvc
-        - build: win-gnu
-          os: windows-2019
-          rust: nightly-x86_64-gnu
-          target: x86_64-pc-windows-gnu
-        - build: win32-msvc
-          os: windows-2019
-          rust: nightly
-          target: i686-pc-windows-msvc
+          - build: linux
+            os: ubuntu-latest
+            rust: nightly
+            target: x86_64-unknown-linux-musl
+          - build: linux-deb
+            os: ubuntu-18.04
+            rust: nightly
+            target: x86_64-unknown-linux-gnu
+          - build: macos
+            os: macos-latest
+            rust: nightly
+            target: x86_64-apple-darwin
+          - build: win-msvc
+            os: windows-2019
+            rust: nightly
+            target: x86_64-pc-windows-msvc
+          - build: win-gnu
+            os: windows-2019
+            rust: nightly-x86_64-gnu
+            target: x86_64-pc-windows-gnu
+          - build: win32-msvc
+            os: windows-2019
+            rust: nightly
+            target: i686-pc-windows-msvc
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 1
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
 
-    - name: Install packages (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: sudo apt-get install -y --no-install-recommends asciidoctor zsh xz-utils liblz4-tool musl-tools brotli zstd
-    - name: Install packages (macOS)
-      if: matrix.os == 'macos-latest'
-      run: brew install asciidoctor
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@v1
-      with:
-        toolchain: ${{ matrix.rust }}
-        target: ${{ matrix.target }}
+      - name: Install packages (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install -y --no-install-recommends asciidoctor zsh xz-utils liblz4-tool musl-tools brotli zstd
+      - name: Install packages (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install asciidoctor
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
 
-    - name: Build release binary (Deb)
-      if: matrix.target == 'x86_64-unknown-linux-gnu'
-      run: cargo install cargo-deb && cargo deb -p refinery_cli
+      - name: Build release binary (Deb)
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: cargo install cargo-deb && cargo deb -p sqlet_cli
 
-    - name: Build release binary
-      if: matrix.target != 'x86_64-unknown-linux-gnu'
-      run: cargo build -p refinery_cli --release --all-features
+      - name: Build release binary
+        if: matrix.target != 'x86_64-unknown-linux-gnu'
+        run: cargo build -p sqlet_cli --release --all-features
 
-    - name: Strip release binary (linux and macos)
-      if: matrix.build == 'linux' || matrix.build == 'macos'
-      run: strip "target/release/refinery"
+      - name: Strip release binary (linux and macos)
+        if: matrix.build == 'linux' || matrix.build == 'macos'
+        run: strip "target/release/sqlet"
 
-    - name: Build archive
-      shell: bash
-      run: |
-        if [[ "${{matrix.target}}" = "x86_64-unknown-linux-gnu" ]]; then
-          mv target/debian/refinery_${{ needs.create-release.outputs.refinery_version }}_amd64.deb .
-          echo "ASSET=refinery_${{ needs.create-release.outputs.refinery_version }}_amd64.deb" >> $GITHUB_ENV
-        else
-          staging="refinery-${{ needs.create-release.outputs.refinery_version }}-${{ matrix.target }}"
-          mkdir -p "$staging"/doc
-          cp {README.md,LICENSE} "$staging/"
-          cp CHANGELOG.md "$staging/doc/"
-          if [[ "${{ matrix.os }}" = "windows-2019" ]]; then
-            cp "target/release/refinery.exe" "$staging/"
-            7z a "$staging.zip" "$staging"
-            echo "ASSET=$staging.zip" >> $GITHUB_ENV
+      - name: Build archive
+        shell: bash
+        run: |
+          if [[ "${{matrix.target}}" = "x86_64-unknown-linux-gnu" ]]; then
+            mv target/debian/sqlet_${{ needs.create-release.outputs.sqlet_version }}_amd64.deb .
+            echo "ASSET=sqlet_${{ needs.create-release.outputs.sqlet_version }}_amd64.deb" >> $GITHUB_ENV
           else
-            cp "target/release/refinery" "$staging/"
-            tar czf "$staging.tar.gz" "$staging"
-            echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
+            staging="sqlet-${{ needs.create-release.outputs.sqlet_version }}-${{ matrix.target }}"
+            mkdir -p "$staging"/doc
+            cp {README.md,LICENSE} "$staging/"
+            cp CHANGELOG.md "$staging/doc/"
+            if [[ "${{ matrix.os }}" = "windows-2019" ]]; then
+              cp "target/release/sqlet.exe" "$staging/"
+              7z a "$staging.zip" "$staging"
+              echo "ASSET=$staging.zip" >> $GITHUB_ENV
+            else
+              cp "target/release/sqlet" "$staging/"
+              tar czf "$staging.tar.gz" "$staging"
+              echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
+            fi
           fi
-        fi
 
-    - name: Upload release archive
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET }}
-        asset_name: ${{ env.ASSET }}
-        asset_content_type: application/octet-stream
+      - name: Upload release archive
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ env.ASSET }}
+          asset_name: ${{ env.ASSET }}
+          asset_content_type: application/octet-stream

@@ -1,0 +1,51 @@
+[package]
+name = "sqlet_cli"
+version = "0.8.16"
+authors = [
+    "Katharina Fey <kookie@spacekookie.de>",
+    "João Oliveira <hello@jxs.pt>",
+]
+license = "MIT OR Apache-2.0"
+description = "Provides the CLI for the Sqlet crate"
+documentation = "https://docs.rs/sqlet/"
+repository = "https://github.com/rust-db/sqlet"
+readme = "README.md"
+keywords = ["sqlet", "migrations", "cli"]
+edition = "2024"
+
+[[bin]]
+name = "sqlet"
+path = "src/main.rs"
+
+[features]
+default = ["mysql", "postgresql", "sqlite-bundled", "mssql"]
+postgresql = ["sqlet-core/postgres"]
+mysql = ["sqlet-core/mysql"]
+sqlite = ["sqlet-core/rusqlite"]
+sqlite-bundled = ["sqlite", "sqlet-core/rusqlite-bundled"]
+mssql = ["sqlet-core/tiberius-config", "tokio"]
+
+[dependencies]
+sqlet-core = { version = "0.8.16", path = "../sqlet_core", default-features = false, features = [
+    "toml",
+] }
+clap = { version = "4", features = ["derive"] }
+human-panic = "2"
+toml = "0.8"
+env_logger = "0.11"
+log = "0.4"
+anyhow = "1"
+regex = "1"
+walkdir = "2.3.1"
+cfg-if = "1.0.0"
+chrono = "0.4"
+tokio = { version = "1.0", features = ["full"], optional = true }
+
+[dev-dependencies]
+predicates = "3"
+assert_cmd = "2"
+
+[package.metadata.deb]
+name = "sqlet"
+maintainer = "João Oliveira <hello@jxs.pt>"
+depends = "libssl-dev"
