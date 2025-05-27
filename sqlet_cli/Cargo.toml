@@ -1,6 +1,6 @@
 [package]
 name = "sqlet_cli"
-version = "0.8.16"
+version = "0.9.0"
 authors = [
     "Katharina Fey <kookie@spacekookie.de>",
     "João Oliveira <hello@jxs.pt>",
