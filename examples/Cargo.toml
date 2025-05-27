@@ -9,7 +9,7 @@ description = "Minimal Sqlet usage example"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/sqlet/"
 repository = "https://github.com/rust-db/sqlet"
-edition = "2021"
+edition = "2024"
 
 [features]
 enums = ["sqlet/enums"]
