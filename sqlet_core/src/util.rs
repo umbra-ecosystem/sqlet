@@ -127,8 +127,6 @@ pub fn find_migration_files(
         .filter_map(Result::ok)
         .filter_map(move |entry| {
             let file_name = entry.file_name();
-            eprintln!("{}", file_name.display());
-
             if entry.file_type().is_dir() {
                 match file_name.to_str() {
                     Some(file_name) if dir_re.is_match(file_name) => {
