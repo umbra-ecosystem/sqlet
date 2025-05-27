@@ -26,7 +26,7 @@ sqlite-bundled = ["sqlite", "sqlet-core/rusqlite-bundled"]
 mssql = ["sqlet-core/tiberius-config", "tokio"]
 
 [dependencies]
-sqlet-core = { version = "0.8.16", path = "../sqlet_core", default-features = false, features = [
+sqlet-core = { version = "0.9.0", path = "../sqlet_core", default-features = false, features = [
     "toml",
 ] }
 clap = { version = "4", features = ["derive"] }

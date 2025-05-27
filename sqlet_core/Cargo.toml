@@ -9,7 +9,7 @@ description = "This crate should not be used directly, it is internally related 
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/sqlet/"
 repository = "https://github.com/rust-db/sqlet"
-edition = "2021"
+edition = "2024"
 
 [features]
 default = []

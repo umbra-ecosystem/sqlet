@@ -30,8 +30,8 @@ toml = ["sqlet-core/toml"]
 enums = ["sqlet-macros/enums"]
 
 [dependencies]
-sqlet-core = { version = "0.8.16", path = "../sqlet_core" }
-sqlet-macros = { version = "0.8.16", path = "../sqlet_macros" }
+sqlet-core = { version = "0.9.0", path = "../sqlet_core" }
+sqlet-macros = { version = "0.9.0", path = "../sqlet_macros" }
 
 [dev-dependencies]
 barrel = { git = "https://github.com/jxs/barrel", features = [

@@ -1,5 +1,5 @@
-use crate::error::Kind;
 use crate::Error;
+use crate::error::Kind;
 use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -194,7 +194,7 @@ impl TryFrom<Url> for Config {
                 return Err(Error::new(
                     Kind::ConfigError("Unsupported database".into()),
                     None,
-                ))
+                ));
             }
         };
 
@@ -329,7 +329,7 @@ cfg_if::cfg_if! {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_db_url, Config, Kind};
+    use super::{Config, Kind, build_db_url};
     use std::io::Write;
     use std::str::FromStr;
 
@@ -416,7 +416,7 @@ mod tests {
         const ENV_KEY: &str = "BUILDS_DB_ENV_VAR";
         const TEST_URL: &str = "postgres://root:1234@localhost:5432/sqlet";
 
-        std::env::set_var(ENV_KEY, TEST_URL);
+        unsafe { std::env::set_var(ENV_KEY, TEST_URL) };
         let config = Config::from_env_var(ENV_KEY).unwrap();
         assert_eq!(TEST_URL, build_db_url("postgres", &config));
     }
@@ -433,7 +433,7 @@ mod tests {
     #[test]
     fn builds_db_env_var_failure() {
         const ENV_KEY: &str = "BUILDS_DB_ENV_VAR_FAILURE";
-        std::env::set_var(ENV_KEY, "this_is_not_a_url");
+        unsafe { std::env::set_var(ENV_KEY, "this_is_not_a_url") };
         let config = Config::from_env_var(ENV_KEY);
         assert!(config.is_err());
     }
