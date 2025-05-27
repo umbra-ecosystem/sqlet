@@ -3,7 +3,7 @@ use time::format_description::well_known::Rfc3339;
 pub mod r#async;
 pub mod sync;
 
-use crate::{error::Kind, Error, Migration};
+use crate::{Error, Migration, error::Kind};
 
 /// Verifies applied and returns to be applied migrations
 ///
@@ -243,7 +243,7 @@ pub(crate) const DEFAULT_MIGRATION_TABLE_NAME: &str = "sqlet_schema_history";
 mod tests {
     use crate::traits::verify_rollback_migrations;
 
-    use super::{verify_migrations, Kind, Migration};
+    use super::{Kind, Migration, verify_migrations};
 
     fn get_migrations() -> Vec<Migration> {
         let migration1 = Migration::unapplied(

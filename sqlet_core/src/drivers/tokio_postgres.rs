@@ -1,8 +1,8 @@
-use crate::traits::r#async::{AsyncMigrate, AsyncQuery, AsyncTransaction};
 use crate::Migration;
+use crate::traits::r#async::{AsyncMigrate, AsyncQuery, AsyncTransaction};
 use async_trait::async_trait;
-use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 use tokio_postgres::error::Error as PgError;
 use tokio_postgres::{Client, Transaction as PgTransaction};
 
