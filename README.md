@@ -16,7 +16,7 @@
 
 Powerful SQL migration toolkit for Rust.
 
-This project, **sqlet**, is a **fork of the original refinery crate** ([https://github.com/rust-db/refinery](https://github.com/rust-db/refinery)). While it builds upon the robust foundation of refinery, we have introduced significant changes that deviate from its original philosophy to offer enhanced flexibility and control over your database migrations.
+This project, **sqlet**, is a **fork of the original sqlet crate** ([https://github.com/rust-db/sqlet](https://github.com/rust-db/sqlet)). While it builds upon the robust foundation of sqlet, we have introduced significant changes that deviate from its original philosophy to offer enhanced flexibility and control over your database migrations.
 
 sqlet strives to make running migrations for different databases as easy as possible.
 It works by running your migrations on a provided database connection, either by embedding them on your Rust code, or via the `sqlet_cli`.
@@ -35,7 +35,7 @@ We have significantly altered the migration process to provide more control and 
   * **Directory-based:** Migrations are placed in a directory containing up.sql and down.sql files for applying and reverting changes, respectively.
   * **File-based Rust Modules:** Migrations can be defined in a single Rust file ({filename}.rs) which contains both up and down functions.
 
-These changes represent a significant departure from the original refinery crate's philosophy, offering a more robust and adaptable migration workflow.
+These changes represent a significant departure from the original sqlet crate's philosophy, offering a more robust and adaptable migration workflow.
 
 ## **Usage**
 
@@ -60,7 +60,7 @@ fn main() {
 }
 ```
 
-For more library examples, refer to the [examples](https://github.com/rust-db/refinery/tree/main/examples).
+For more library examples, refer to the [examples](https://github.com/rust-db/sqlet/tree/main/examples).
 
 ### **Example: CLI**
 
@@ -91,18 +91,18 @@ let report = embedded::migrations::runner().run_async(&mut client).await?;
 
 ## **Implementation Details**
 
-**sqlet** works by creating a table that keeps all the applied migrations' versions and their metadata. When you [run](https://docs.rs/refinery/latest/refinery/struct.Runner.html#method.run) the migrations Runner, **sqlet** compares the applied migrations with the ones to be applied, checking for [divergent](https://docs.rs/refinery/latest/refinery/struct.Runner.html#method.set_abort_divergent) and [missing](https://docs.rs/refinery/latest/refinery/struct.Runner.html#method.set_abort_missing) and executing unapplied migrations.
+**sqlet** works by creating a table that keeps all the applied migrations' versions and their metadata. When you [run](https://docs.rs/sqlet/latest/sqlet/struct.Runner.html#method.run) the migrations Runner, **sqlet** compares the applied migrations with the ones to be applied, checking for [divergent](https://docs.rs/sqlet/latest/sqlet/struct.Runner.html#method.set_abort_divergent) and [missing](https://docs.rs/sqlet/latest/sqlet/struct.Runner.html#method.set_abort_missing) and executing unapplied migrations.
 
 By default, sqlet runs each migration in a single transaction. Alternatively, you can also configure sqlet to wrap the entire execution of all migrations in a single transaction by setting `set_grouped` to true.
 The rust crate intentionally ignores new migration files until your sourcecode is rebuild. This prevents accidental migrations and altering the database schema without any code changes. We can also bake the migrations into the binary, so no additional files are needed when deployed.
 
 ### **Rollback**
 
-Unlike the original refinery and its earlier philosophy on undo/rollback migrations (which was based on Flyway), **this fork explicitly supports rollbacks**. You can define down.sql files for SQL-based migrations or down functions in Rust modules to revert changes introduced by their corresponding up counterparts. This provides a clear and direct mechanism for undoing migrations.
+Unlike the original sqlet and its earlier philosophy on undo/rollback migrations (which was based on Flyway), **this fork explicitly supports rollbacks**. You can define down.sql files for SQL-based migrations or down functions in Rust modules to revert changes introduced by their corresponding up counterparts. This provides a clear and direct mechanism for undoing migrations.
 
 ## **Support for Additional Database Drivers**
 
-While initially it seemed beneficial to support as many aditional drivers as possible in this repo, with the current bandwidth available by the maintainers it's preferable to create them and maintain them on external repositories (see [here](https://github.com/rust-db/refinery/pull/264#issuecomment-1419198667) for context).
+While initially it seemed beneficial to support as many aditional drivers as possible in this repo, with the current bandwidth available by the maintainers it's preferable to create them and maintain them on external repositories (see [here](https://github.com/rust-db/sqlet/pull/264#issuecomment-1419198667) for context).
 
 Notable external database drivers:
 

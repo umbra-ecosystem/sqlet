@@ -1,10 +1,10 @@
 [workspace]
 resolver = "3"
 members = [
-    "refinery",
-    "refinery_cli",
-    "refinery_core",
-    "refinery_macros",
+    "sqlet",
+    "sqlet_cli",
+    "sqlet_core",
+    "sqlet_macros",
     "examples",
 ]
 
